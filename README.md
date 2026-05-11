@@ -2,10 +2,14 @@
 
 **Turbomod** (the official successor to Daergi) is a lightweight, secure bash utility designed for Linux environments to easily moderate Intel Turbo Boost. By interfacing directly with the Intel P-State driver, Turbomod allows gamers, developers, and power users to instantly toggle their CPU's turbo frequencies. 
 
+## Why Turbomod Exists
+Daergi was a nice idea, but in order to maintain the security, it required strict lockdown of admin privileges to prevent a local privilege escalation vulnerability. A more elegant path was simply to choose the simple shell script to do this work. The GUI was nice, but it created overhead and problems that really aren't necessary. 
+
 Disabling Turbo Boost is a highly effective strategy for:
 - **Stabilizing Framerates**: Preventing sudden frequency spikes and thermal throttling during intense gaming sessions.
 - **Controlling Thermals**: Drastically lowering CPU temperatures on laptops or small form-factor builds.
 - **Battery Preservation**: Capping power draw when maximum burst performance isn't necessary.
+- **No Stuttering in Game**: Essentially, the prevents weird optical glitches in the games due to chaotic Turbo Boost virtual core operations.
 
 ---
 
