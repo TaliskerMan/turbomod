@@ -1,0 +1,89 @@
+#!/bin/bash
+set -euo pipefail
+
+# turbomod - Intel Turbo Boost Moderator for Gaming
+# This tool allows easy enabling, disabling, and status checking of Intel Turbo Boost.
+
+TURBO_FILE="/sys/devices/system/cpu/intel_pstate/no_turbo"
+
+check_status() {
+    if [ ! -f "$TURBO_FILE" ]; then
+        echo "Error: Intel P-State driver not found. ($TURBO_FILE is missing)"
+        exit 1
+    fi
+    local val
+    val=$(cat "$TURBO_FILE")
+    if [ "$val" = "0" ]; then
+        echo "Turbo Boost is currently ON"
+    elif [ "$val" = "1" ]; then
+        echo "Turbo Boost is currently OFF"
+    else
+        echo "Turbo Boost state unknown ($val)"
+    fi
+}
+
+enable_turbo() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: Modifying the Intel P-State driver requires administrative privileges."
+        echo "Please run this command securely using: sudo $0 enable"
+        exit 1
+    fi
+    if [ ! -f "$TURBO_FILE" ]; then
+        echo "Error: Intel P-State driver not found."
+        exit 1
+    fi
+    echo "0" > "$TURBO_FILE"
+    echo "Turbo Boost enabled."
+}
+
+disable_turbo() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: Modifying the Intel P-State driver requires administrative privileges."
+        echo "Please run this command securely using: sudo $0 disable"
+        exit 1
+    fi
+    if [ ! -f "$TURBO_FILE" ]; then
+        echo "Error: Intel P-State driver not found."
+        exit 1
+    fi
+    echo "1" > "$TURBO_FILE"
+    echo "Turbo Boost disabled."
+}
+
+show_help() {
+    echo "turbomod - Intel Turbo Boost Moderator for Gaming"
+    echo ""
+    echo "Usage: turbomod {enable|disable|status}"
+    echo ""
+    echo "Commands:"
+    echo "  enable   - Turn Intel Turbo Boost ON (Normal performance)"
+    echo "  disable  - Turn Intel Turbo Boost OFF (Steady gaming performance)"
+    echo "  status   - Check current Intel Turbo Boost status"
+    echo ""
+    echo "Note: Modifying the state requires administrative privileges and will prompt for your sudo password."
+}
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 1
+fi
+
+case "${1:-}" in
+    enable)
+        enable_turbo
+        ;;
+    disable)
+        disable_turbo
+        ;;
+    status)
+        check_status
+        ;;
+    -h|--help)
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        show_help
+        exit 1
+        ;;
+esac
