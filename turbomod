@@ -1,18 +1,34 @@
 #!/bin/bash
+#
+# turbomod - Intel Turbo Boost Moderator for Gaming
+#
+# This script provides a simple user interface for checking the status of, 
+# enabling, or disabling Intel Turbo Boost technology on Linux systems running 
+# the intel_pstate CPU scaling driver.
+#
+# Intel Turbo Boost dynamically increases CPU frequency under heavy loads, which 
+# is beneficial for peak performance but can cause temperature spikes and thermal 
+# throttling under sustained gaming loads. Disabling it can help maintain steadier 
+# frame rates and lower temperatures.
+
 set -euo pipefail
 
-# turbomod - Intel Turbo Boost Moderator for Gaming
-# This tool allows easy enabling, disabling, and status checking of Intel Turbo Boost.
-
+# Path to the sysfs entry controlling Intel Turbo Boost in the intel_pstate driver.
+# Writing "0" to this file enables Turbo Boost (no_turbo=0).
+# Writing "1" to this file disables Turbo Boost (no_turbo=1).
 TURBO_FILE="/sys/devices/system/cpu/intel_pstate/no_turbo"
 
+# Checks the current status of Turbo Boost.
+# Reads the raw value from sysfs and translates it into a human-readable message.
 check_status() {
+    # Verify that the Intel P-State driver is active and the control file exists.
     if [ ! -f "$TURBO_FILE" ]; then
         echo "Error: Intel P-State driver not found. ($TURBO_FILE is missing)"
         exit 1
     fi
     local val
     val=$(cat "$TURBO_FILE")
+    # Translate the binary flag into a clear state.
     if [ "$val" = "0" ]; then
         echo "Turbo Boost is currently ON"
     elif [ "$val" = "1" ]; then
@@ -22,34 +38,45 @@ check_status() {
     fi
 }
 
+# Enables Intel Turbo Boost.
+# Requires root privileges to write to the sysfs path.
 enable_turbo() {
+    # Ensure the script is run with administrative privileges.
     if [ "$EUID" -ne 0 ]; then
         echo "Error: Modifying the Intel P-State driver requires administrative privileges."
         echo "Please run this command securely using: sudo $0 enable"
         exit 1
     fi
+    # Verify driver control file is present.
     if [ ! -f "$TURBO_FILE" ]; then
         echo "Error: Intel P-State driver not found."
         exit 1
     fi
+    # Write 0 to disable 'no_turbo', thereby enabling Turbo Boost.
     echo "0" > "$TURBO_FILE"
     echo "Turbo Boost enabled."
 }
 
+# Disables Intel Turbo Boost to stabilize sustained CPU temperatures.
+# Requires root privileges to write to the sysfs path.
 disable_turbo() {
+    # Ensure the script is run with administrative privileges.
     if [ "$EUID" -ne 0 ]; then
         echo "Error: Modifying the Intel P-State driver requires administrative privileges."
         echo "Please run this command securely using: sudo $0 disable"
         exit 1
     fi
+    # Verify driver control file is present.
     if [ ! -f "$TURBO_FILE" ]; then
         echo "Error: Intel P-State driver not found."
         exit 1
     fi
+    # Write 1 to enable 'no_turbo', thereby disabling Turbo Boost.
     echo "1" > "$TURBO_FILE"
     echo "Turbo Boost disabled."
 }
 
+# Displays usage help and command options.
 show_help() {
     echo "turbomod - Intel Turbo Boost Moderator for Gaming"
     echo ""
@@ -63,11 +90,13 @@ show_help() {
     echo "Note: Modifying the state requires administrative privileges and will prompt for your sudo password."
 }
 
+# Ensure at least one argument is supplied.
 if [ $# -eq 0 ]; then
     show_help
     exit 1
 fi
 
+# Dispatch execution based on the user-specified command.
 case "${1:-}" in
     enable)
         enable_turbo
