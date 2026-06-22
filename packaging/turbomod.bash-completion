@@ -1,0 +1,19 @@
+# bash completion for turbomod
+# Install to /usr/share/bash-completion/completions/turbomod
+_turbomod() {
+    local cur prev
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    case "$prev" in
+        enable|disable)
+            COMPREPLY=( $(compgen -W "--persist" -- "$cur") )
+            return 0
+            ;;
+    esac
+
+    if [ "$COMP_CWORD" -eq 1 ]; then
+        COMPREPLY=( $(compgen -W "status enable disable restore --help --version" -- "$cur") )
+    fi
+}
+complete -F _turbomod turbomod

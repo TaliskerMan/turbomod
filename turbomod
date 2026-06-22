@@ -2,30 +2,54 @@
 #
 # turbomod - Intel Turbo Boost Moderator for Gaming
 #
-# This script provides a simple user interface for checking the status of, 
-# enabling, or disabling Intel Turbo Boost technology on Linux systems running 
+# This script provides a simple user interface for checking the status of,
+# enabling, or disabling Intel Turbo Boost technology on Linux systems running
 # the intel_pstate CPU scaling driver.
 #
-# Intel Turbo Boost dynamically increases CPU frequency under heavy loads, which 
-# is beneficial for peak performance but can cause temperature spikes and thermal 
-# throttling under sustained gaming loads. Disabling it can help maintain steadier 
+# Intel Turbo Boost dynamically increases CPU frequency under heavy loads, which
+# is beneficial for peak performance but can cause temperature spikes and thermal
+# throttling under sustained gaming loads. Disabling it can help maintain steadier
 # frame rates and lower temperatures.
+#
+# Scope: this tool targets the Intel P-State driver only. AMD systems and Intel
+# systems using the acpi-cpufreq driver are not supported.
 
 set -euo pipefail
+
+VERSION="1.1.0"
 
 # Path to the sysfs entry controlling Intel Turbo Boost in the intel_pstate driver.
 # Writing "0" to this file enables Turbo Boost (no_turbo=0).
 # Writing "1" to this file disables Turbo Boost (no_turbo=1).
 TURBO_FILE="/sys/devices/system/cpu/intel_pstate/no_turbo"
 
+# File used to remember the desired state across reboots. The companion systemd
+# unit (turbomod-restore.service) reads this at boot and re-applies it.
+STATE_FILE="/etc/turbomod/state"
+
+# Verify that the Intel P-State driver is active and the control file exists.
+# Exits with an error if it is not, since every action depends on it.
+require_driver() {
+    if [ ! -f "$TURBO_FILE" ]; then
+        echo "Error: Intel P-State driver not found. ($TURBO_FILE is missing)" >&2
+        echo "turbomod supports the intel_pstate driver only." >&2
+        exit 1
+    fi
+}
+
+# Ensure the script is running as root before attempting a sysfs write.
+require_root() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: Modifying Turbo Boost requires administrative privileges." >&2
+        echo "Run: sudo $0 ${1:-<command>}" >&2
+        exit 1
+    fi
+}
+
 # Checks the current status of Turbo Boost.
 # Reads the raw value from sysfs and translates it into a human-readable message.
 check_status() {
-    # Verify that the Intel P-State driver is active and the control file exists.
-    if [ ! -f "$TURBO_FILE" ]; then
-        echo "Error: Intel P-State driver not found. ($TURBO_FILE is missing)"
-        exit 1
-    fi
+    require_driver
     local val
     val=$(cat "$TURBO_FILE")
     # Translate the binary flag into a clear state.
@@ -38,56 +62,96 @@ check_status() {
     fi
 }
 
-# Enables Intel Turbo Boost.
-# Requires root privileges to write to the sysfs path.
-enable_turbo() {
-    # Ensure the script is run with administrative privileges.
-    if [ "$EUID" -ne 0 ]; then
-        echo "Error: Modifying the Intel P-State driver requires administrative privileges."
-        echo "Please run this command securely using: sudo $0 enable"
-        exit 1
+# Persists the desired state ("enable"/"disable") to STATE_FILE so the systemd
+# unit can re-apply it after a reboot. Best-effort: warns but does not fail the
+# command if the state directory cannot be written.
+save_state() {
+    local desired="$1"
+    if mkdir -p "$(dirname "$STATE_FILE")" 2>/dev/null && \
+       printf '%s\n' "$desired" > "$STATE_FILE" 2>/dev/null; then
+        echo "Saved '$desired' as the persistent boot state ($STATE_FILE)."
+    else
+        echo "Warning: could not write $STATE_FILE; state will not persist across reboots." >&2
     fi
-    # Verify driver control file is present.
-    if [ ! -f "$TURBO_FILE" ]; then
-        echo "Error: Intel P-State driver not found."
-        exit 1
-    fi
-    # Write 0 to disable 'no_turbo', thereby enabling Turbo Boost.
-    echo "0" > "$TURBO_FILE"
-    echo "Turbo Boost enabled."
 }
 
-# Disables Intel Turbo Boost to stabilize sustained CPU temperatures.
-# Requires root privileges to write to the sysfs path.
+# Writes a value to no_turbo and verifies it actually took effect by reading it
+# back. On some HWP/firmware configurations a write can be silently rejected, so
+# we never claim success we did not confirm.
+#   $1 = value to write ("0" or "1")
+#   $2 = human-readable label for the resulting state ("enabled"/"disabled")
+apply_turbo() {
+    local target="$1" label="$2" actual
+    echo "$target" > "$TURBO_FILE"
+    actual=$(cat "$TURBO_FILE")
+    if [ "$actual" != "$target" ]; then
+        echo "Error: write was not applied (no_turbo is '$actual', expected '$target')." >&2
+        echo "Your firmware or HWP configuration may be overriding this setting." >&2
+        exit 1
+    fi
+    echo "Turbo Boost $label."
+}
+
+# Enables Intel Turbo Boost (no_turbo=0). Requires root.
+enable_turbo() {
+    require_root enable
+    require_driver
+    apply_turbo "0" "enabled"
+}
+
+# Disables Intel Turbo Boost (no_turbo=1) to stabilize sustained temperatures.
+# Requires root.
 disable_turbo() {
-    # Ensure the script is run with administrative privileges.
-    if [ "$EUID" -ne 0 ]; then
-        echo "Error: Modifying the Intel P-State driver requires administrative privileges."
-        echo "Please run this command securely using: sudo $0 disable"
-        exit 1
+    require_root disable
+    require_driver
+    apply_turbo "1" "disabled"
+}
+
+# Re-applies the saved persistent state. Intended to be called by the systemd
+# unit at boot. Silently succeeds if no state has been saved.
+restore_state() {
+    require_root restore
+    require_driver
+    if [ ! -f "$STATE_FILE" ]; then
+        echo "No saved state to restore ($STATE_FILE not present)."
+        exit 0
     fi
-    # Verify driver control file is present.
-    if [ ! -f "$TURBO_FILE" ]; then
-        echo "Error: Intel P-State driver not found."
-        exit 1
-    fi
-    # Write 1 to enable 'no_turbo', thereby disabling Turbo Boost.
-    echo "1" > "$TURBO_FILE"
-    echo "Turbo Boost disabled."
+    local desired
+    desired=$(cat "$STATE_FILE")
+    case "$desired" in
+        enable)  apply_turbo "0" "enabled" ;;
+        disable) apply_turbo "1" "disabled" ;;
+        *)
+            echo "Error: unrecognized saved state '$desired' in $STATE_FILE." >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Prints the version and exits.
+show_version() {
+    echo "turbomod $VERSION"
 }
 
 # Displays usage help and command options.
 show_help() {
-    echo "turbomod - Intel Turbo Boost Moderator for Gaming"
+    echo "turbomod $VERSION - Intel Turbo Boost Moderator for Gaming"
     echo ""
-    echo "Usage: turbomod {enable|disable|status}"
+    echo "Usage: turbomod {status|enable|disable|restore} [--persist]"
     echo ""
     echo "Commands:"
-    echo "  enable   - Turn Intel Turbo Boost ON (Normal performance)"
-    echo "  disable  - Turn Intel Turbo Boost OFF (Steady gaming performance)"
     echo "  status   - Check current Intel Turbo Boost status"
+    echo "  enable   - Turn Intel Turbo Boost ON (normal performance)"
+    echo "  disable  - Turn Intel Turbo Boost OFF (steady gaming performance)"
+    echo "  restore  - Re-apply the saved persistent state (used at boot)"
     echo ""
-    echo "Note: Modifying the state requires administrative privileges and will prompt for your sudo password."
+    echo "Options:"
+    echo "  --persist    With enable/disable, remember the state across reboots"
+    echo "  -h, --help   Show this help"
+    echo "  -v, --version Show version"
+    echo ""
+    echo "Note: enable, disable, and restore modify the driver and require"
+    echo "administrative privileges (sudo). Supports the intel_pstate driver only."
 }
 
 # Ensure at least one argument is supplied.
@@ -96,22 +160,37 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+# Parse an optional --persist flag that may follow enable/disable.
+PERSIST=0
+COMMAND="${1:-}"
+if [ "${2:-}" = "--persist" ]; then
+    PERSIST=1
+fi
+
 # Dispatch execution based on the user-specified command.
-case "${1:-}" in
+case "$COMMAND" in
     enable)
         enable_turbo
+        if [ "$PERSIST" -eq 1 ]; then save_state "enable"; fi
         ;;
     disable)
         disable_turbo
+        if [ "$PERSIST" -eq 1 ]; then save_state "disable"; fi
         ;;
     status)
         check_status
+        ;;
+    restore)
+        restore_state
+        ;;
+    -v|--version)
+        show_version
         ;;
     -h|--help)
         show_help
         ;;
     *)
-        echo "Unknown command: $1"
+        echo "Unknown command: $COMMAND" >&2
         show_help
         exit 1
         ;;

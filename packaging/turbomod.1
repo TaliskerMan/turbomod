@@ -1,0 +1,68 @@
+.TH TURBOMOD 1 "2026-06-22" "turbomod 1.1.0" "User Commands"
+.SH NAME
+turbomod \- moderate Intel Turbo Boost on Linux (intel_pstate)
+.SH SYNOPSIS
+.B turbomod
+.I command
+.RB [ --persist ]
+.SH DESCRIPTION
+.B turbomod
+toggles Intel Turbo Boost by writing to the
+.I no_turbo
+sysfs attribute exposed by the Intel P-State driver at
+.IR /sys/devices/system/cpu/intel_pstate/no_turbo .
+Disabling Turbo Boost can reduce thermal spikes and produce steadier frame
+rates under sustained load.
+.PP
+Only the
+.B intel_pstate
+driver is supported. AMD systems and Intel systems using
+.B acpi-cpufreq
+are not supported.
+.SH COMMANDS
+.TP
+.B status
+Show whether Turbo Boost is currently ON or OFF. Does not require root.
+.TP
+.B enable
+Turn Turbo Boost ON (writes no_turbo=0). Requires root.
+.TP
+.B disable
+Turn Turbo Boost OFF (writes no_turbo=1). Requires root.
+.TP
+.B restore
+Re-apply the saved persistent state. Intended to be run at boot by
+.BR turbomod-restore.service (8).
+Requires root.
+.SH OPTIONS
+.TP
+.B --persist
+When used with
+.B enable
+or
+.BR disable ,
+save the chosen state to
+.I /etc/turbomod/state
+so it is re-applied on the next boot.
+.TP
+.BR -h ", " --help
+Show usage information.
+.TP
+.BR -v ", " --version
+Show the version.
+.SH EXIT STATUS
+Returns 0 on success. Returns 1 if the driver is absent, if root is required
+but not present, or if a write could not be verified after being applied.
+.SH FILES
+.TP
+.I /sys/devices/system/cpu/intel_pstate/no_turbo
+The kernel control file.
+.TP
+.I /etc/turbomod/state
+The saved persistent state (\fBenable\fR or \fBdisable\fR).
+.SH EXAMPLES
+.TP
+Disable Turbo Boost and remember it across reboots:
+.B sudo turbomod disable --persist
+.SH AUTHOR
+Chuck Talk (Nordheim Online / AntiGravity suite).

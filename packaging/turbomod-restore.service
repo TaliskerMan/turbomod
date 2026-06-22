@@ -1,0 +1,15 @@
+[Unit]
+Description=Re-apply the saved turbomod Turbo Boost state at boot
+Documentation=man:turbomod(1)
+# Only meaningful once the CPU sysfs interface is available.
+After=sysinit.target
+ConditionPathExists=/sys/devices/system/cpu/intel_pstate/no_turbo
+ConditionPathExists=/etc/turbomod/state
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/turbomod restore
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
