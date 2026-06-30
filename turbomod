@@ -50,15 +50,15 @@ require_root() {
 # Reads the raw value from sysfs and translates it into a human-readable message.
 check_status() {
     require_driver
-    local val
-    val=$(cat "$TURBO_FILE")
+    local current_value
+    current_value=$(cat "$TURBO_FILE")
     # Translate the binary flag into a clear state.
-    if [ "$val" = "0" ]; then
+    if [ "$current_value" = "0" ]; then
         echo "Turbo Boost is currently ON"
-    elif [ "$val" = "1" ]; then
+    elif [ "$current_value" = "1" ]; then
         echo "Turbo Boost is currently OFF"
     else
-        echo "Turbo Boost state unknown ($val)"
+        echo "Turbo Boost state unknown ($current_value)"
     fi
 }
 
