@@ -1,4 +1,4 @@
-.TH TURBOMOD 1 "2026-06-22" "turbomod 1.1.0" "User Commands"
+.TH TURBOMOD 1 "2026-10-16" "turbomod 1.1.1" "User Commands"
 .SH NAME
 turbomod \- moderate Intel Turbo Boost on Linux (intel_pstate)
 .SH SYNOPSIS
@@ -31,9 +31,9 @@ Turn Turbo Boost ON (writes no_turbo=0). Requires root.
 Turn Turbo Boost OFF (writes no_turbo=1). Requires root.
 .TP
 .B restore
-Re-apply the saved persistent state. Intended to be run at boot by
-.BR turbomod-restore.service (8).
-Requires root.
+Re-apply the saved persistent state. Intended to be run at boot by the
+.B turbomod-restore.service
+systemd unit. Requires root.
 .SH OPTIONS
 .TP
 .B --persist
@@ -42,8 +42,11 @@ When used with
 or
 .BR disable ,
 save the chosen state to
-.I /etc/turbomod/state
-so it is re-applied on the next boot.
+.IR /etc/turbomod/state .
+It is re-applied at boot only when
+.B turbomod-restore.service
+is enabled
+.RB ( "sudo systemctl enable turbomod-restore.service" ).
 .TP
 .BR -h ", " --help
 Show usage information.
@@ -52,7 +55,8 @@ Show usage information.
 Show the version.
 .SH EXIT STATUS
 Returns 0 on success. Returns 1 if the driver is absent, if root is required
-but not present, or if a write could not be verified after being applied.
+but not present, if an argument is not recognised, or if a write could not be
+verified after being applied.
 .SH FILES
 .TP
 .I /sys/devices/system/cpu/intel_pstate/no_turbo
@@ -65,4 +69,6 @@ The saved persistent state (\fBenable\fR or \fBdisable\fR).
 Disable Turbo Boost and remember it across reboots:
 .B sudo turbomod disable --persist
 .SH AUTHOR
-Chuck Talk (Nordheim Online / AntiGravity suite).
+Chuck Talk (Nordheim Online).
+.SH LICENSE
+GNU General Public License, version 3 or later. There is NO WARRANTY.

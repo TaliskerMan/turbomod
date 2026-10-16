@@ -8,6 +8,7 @@ ConditionPathExists=/etc/turbomod/state
 
 [Service]
 Type=oneshot
+# install.sh rewrites this line to match its PREFIX (default /usr/local).
 ExecStart=/usr/local/bin/turbomod restore
 RemainAfterExit=yes
 

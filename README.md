@@ -15,6 +15,8 @@ Disabling Turbo Boost can help with:
 - **Battery preservation** — capping power draw when burst performance isn't needed.
 - **Smoother frametimes** — reducing stutter caused by aggressive turbo ramping under sustained load.
 
+**The trade-off:** with Turbo Boost off, the CPU never runs above its base frequency, so peak and single-threaded performance drop. Some games and tasks will run slower. Results depend on your CPU and cooling; try it and compare.
+
 ---
 
 ## 🛠️ Installation
@@ -25,7 +27,17 @@ Disabling Turbo Boost can help with:
 sudo ./install.sh
 ```
 
-This installs `turbomod` to `/usr/local/bin`, a man page, bash completion, and an optional (disabled) systemd unit for boot persistence. Remove everything with `sudo ./install.sh --uninstall`.
+This installs `turbomod` to `/usr/local/bin`, a man page, bash completion, and an optional (disabled) systemd unit for boot persistence. To install somewhere else, set `PREFIX` (for example `sudo PREFIX=/usr ./install.sh`); the boot unit is written to run `turbomod` from that location. Remove everything with `sudo ./install.sh --uninstall` (use the same `PREFIX`).
+
+### Verify the files first (optional)
+
+Each release ships SHA-512 checksums signed with the Nordheim Online key:
+
+```bash
+gpg --import Audit/pubkey.asc
+gpg --verify Audit/checksums.sha512.asc Audit/checksums.sha512
+sha512sum -c Audit/checksums.sha512
+```
 
 ### Manual install
 
@@ -66,12 +78,16 @@ sudo turbomod enable
 After each change, Turbomod reads `no_turbo` back and confirms the new value actually took effect before reporting success.
 
 ### Persist across reboots
-sysfs settings are runtime-only and reset on boot. Add `--persist` to remember your choice, then enable the systemd unit:
+sysfs settings are runtime-only and reset on boot. Add `--persist` to save your choice, then enable the systemd unit once — the saved state is **only** re-applied at boot while the unit is enabled (Turbomod reminds you if it isn't):
 ```bash
 sudo turbomod disable --persist
 sudo systemctl enable turbomod-restore.service
 ```
 The saved state lives in `/etc/turbomod/state` and is re-applied at every boot by `turbomod restore`.
+
+Turbomod rejects arguments it doesn't recognise (a mistyped `--persist` is an error, not silently ignored).
+
+> **Note:** Firmware settings or other power tools (TLP, power-profiles-daemon, thermald) may also manage Turbo Boost and can override Turbomod. If the setting doesn't stick, check those.
 
 ---
 
@@ -92,5 +108,6 @@ Modifying Turbo Boost requires writing to sysfs, which is root-only. Turbomod ch
 
 ## ⚖️ License
 
-This project is part of the AntiGravity suite.
-*(Nordheim Online Product — Copyright © Chuck Talk)*
+Turbomod is free software, licensed under the **GNU General Public License, version 3 or later** (see [LICENSE](LICENSE)). It comes with no warranty.
+
+Copyright © 2026 Chuck Talk, Nordheim Online. The full user guide is [docs/Turbomod_User_Guide.pdf](docs/Turbomod_User_Guide.pdf).

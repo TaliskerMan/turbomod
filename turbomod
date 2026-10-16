@@ -13,10 +13,13 @@
 #
 # Scope: this tool targets the Intel P-State driver only. AMD systems and Intel
 # systems using the acpi-cpufreq driver are not supported.
+#
+# Copyright (C) 2026 Chuck Talk <chuck@nordheim.online>
+# Licensed under the GNU General Public License, version 3 or later. See LICENSE.
 
 set -euo pipefail
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 
 # Path to the sysfs entry controlling Intel Turbo Boost in the intel_pstate driver.
 # Writing "0" to this file enables Turbo Boost (no_turbo=0).
@@ -69,7 +72,16 @@ save_state() {
     local desired="$1"
     if mkdir -p "$(dirname "$STATE_FILE")" 2>/dev/null && \
        printf '%s\n' "$desired" > "$STATE_FILE" 2>/dev/null; then
-        echo "Saved '$desired' as the persistent boot state ($STATE_FILE)."
+        echo "Saved '$desired' as the boot state ($STATE_FILE)."
+        # The saved state only takes effect at boot if the restore unit is
+        # enabled (install.sh installs it disabled). Say which case applies.
+        if command -v systemctl >/dev/null 2>&1 && \
+           systemctl is-enabled --quiet turbomod-restore.service 2>/dev/null; then
+            echo "turbomod-restore.service will re-apply it at every boot."
+        else
+            echo "Note: it is only re-applied at boot once the boot service is enabled:"
+            echo "  sudo systemctl enable turbomod-restore.service"
+        fi
     else
         echo "Warning: could not write $STATE_FILE; state will not persist across reboots." >&2
     fi
@@ -142,11 +154,12 @@ show_help() {
     echo "Commands:"
     echo "  status   - Check current Intel Turbo Boost status"
     echo "  enable   - Turn Intel Turbo Boost ON (normal performance)"
-    echo "  disable  - Turn Intel Turbo Boost OFF (steady gaming performance)"
+    echo "  disable  - Turn Intel Turbo Boost OFF (caps the CPU at its base frequency)"
     echo "  restore  - Re-apply the saved persistent state (used at boot)"
     echo ""
     echo "Options:"
-    echo "  --persist    With enable/disable, remember the state across reboots"
+    echo "  --persist    With enable/disable, save the state for turbomod-restore.service"
+    echo "               to re-apply at boot (the service must be enabled)"
     echo "  -h, --help   Show this help"
     echo "  -v, --version Show version"
     echo ""
@@ -160,12 +173,37 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-# Parse an optional --persist flag that may follow enable/disable.
+# Parse the command and its options. Anything unexpected is an error rather
+# than silently ignored: a mistyped "--persits" must not look like it worked.
 PERSIST=0
-COMMAND="${1:-}"
-if [ "${2:-}" = "--persist" ]; then
-    PERSIST=1
-fi
+COMMAND="$1"
+shift
+case "$COMMAND" in
+    enable|disable|status|restore|-v|--version|-h|--help) ;;
+    *)
+        echo "Unknown command: $COMMAND" >&2
+        show_help
+        exit 1
+        ;;
+esac
+for arg in "$@"; do
+    case "$arg" in
+        --persist)
+            case "$COMMAND" in
+                enable|disable) PERSIST=1 ;;
+                *)
+                    echo "Error: --persist only applies to enable and disable." >&2
+                    exit 1
+                    ;;
+            esac
+            ;;
+        *)
+            echo "Error: unexpected argument '$arg'." >&2
+            show_help >&2
+            exit 1
+            ;;
+    esac
+done
 
 # Dispatch execution based on the user-specified command.
 case "$COMMAND" in

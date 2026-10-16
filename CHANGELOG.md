@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-16
+### Fixed
+- **Licence:** `LICENSE` named AGPL-3.0 but didn't contain the licence text,
+  and the website said GPLv3. Turbomod is now GPL-3.0-or-later, with the full
+  text in `LICENSE` and a licence statement in the README, script and man page.
+- **Custom `PREFIX` broke boot persistence:** the boot unit always ran
+  `/usr/local/bin/turbomod`. `install.sh` now writes the unit's `ExecStart`
+  for the `PREFIX` it installs to, and rejects relative or spaced paths.
+  Added `DESTDIR` for staged/packaged installs.
+- **Mistyped options were silently ignored** (`disable --persits` disabled
+  turbo but didn't save anything, with no warning). Unknown arguments are now
+  errors, as is `--persist` on commands other than enable/disable.
+- `--persist` said the state was saved "across reboots" even when the boot
+  service wasn't enabled (it's installed disabled). It now says whether the
+  service will re-apply it, and how to enable it if not.
+- Man page referred to a nonexistent `turbomod-restore.service(8)` page.
+
+### Changed
+- README notes the trade-off (lower peak performance) and that firmware or
+  other power tools can override the setting; documents release verification.
+- Tests: argument validation and `install.sh` unit path (14 bats tests).
+
 ## [1.1.0] - 2026-06-22
 ### Added
 - `--version` / `-v` flag and version string in `--help`.
