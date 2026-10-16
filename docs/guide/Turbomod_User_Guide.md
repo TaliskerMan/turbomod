@@ -37,7 +37,7 @@ If it prints `intel_pstate` (or `intel_cpufreq`, the same driver in passive mode
 
 ## Installing Turbomod
 
-1. Download the Turbomod source (clone the repository or download the release archive) and open a terminal in its folder.
+1. Get the Turbomod source: clone the repository, or on the GitHub release page download **Source code (tar.gz)** and extract it. Open a terminal in that folder. (Don't use the individual files attached to a release for installing: they are flat copies, and `install.sh` needs the `packaging/` folder.)
 2. Optionally, check the files against the signed checksums shipped in `Audit/`:
 
 ```
@@ -80,8 +80,8 @@ This removes the command, man page, completion and boot service. Your saved sett
 | `turbomod status` | Shows whether Turbo Boost is on or off | No |
 | `sudo turbomod disable` | Turns Turbo Boost off (base clock only) | Yes |
 | `sudo turbomod enable` | Turns Turbo Boost back on | Yes |
-| `sudo turbomod disable --persist` | Turns it off and remembers that for future boots | Yes |
-| `sudo turbomod enable --persist` | Turns it on and remembers that for future boots | Yes |
+| `sudo turbomod disable --persist` | Turns it off and saves that for the boot service to re-apply | Yes |
+| `sudo turbomod enable --persist` | Turns it on and saves that for the boot service to re-apply | Yes |
 | `sudo turbomod restore` | Re-applies the saved setting (used at boot) | Yes |
 | `turbomod --help` | Usage | No |
 | `turbomod --version` | Version | No |
@@ -135,7 +135,11 @@ That's all it changes. It doesn't touch other power settings, governors or frequ
 
 **"Intel P-State driver not found".** Your system doesn't use `intel_pstate` (for example, an AMD processor or the `acpi-cpufreq` driver). Turbomod can't be used there.
 
-**"Permission denied" or a request to use sudo.** Run `enable`, `disable` and `restore` with `sudo`.
+**"Modifying Turbo Boost requires administrative privileges."** Run `enable`, `disable` and `restore` with `sudo`.
+
+**"Error: write was not applied".** Turbomod wrote the setting but the processor didn't accept it, usually because the firmware (BIOS/UEFI) has Turbo Boost turned off or locked. Check your firmware settings. Nothing else was changed.
+
+**"Unknown command" or "unexpected argument".** Check the spelling; `turbomod --help` lists the commands. `--persist` only works with `enable` and `disable`.
 
 **My setting resets after a reboot.** Use `--persist` and enable `turbomod-restore.service` as described above.
 
