@@ -1,0 +1,29 @@
+# Change Comment (2026-11-15, TURB-9 / TURB-10 / CP-ChangeComments):
+# Manual-only (`workflow_dispatch`) Linux quality-gate workflow with 40-char
+# commit-SHA-pinned GitHub Actions, ShellCheck, BATS unit tests, and ESM guide syntax check.
+name: CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Run ShellCheck on all scripts
+        run: shellcheck turbomod install.sh release.sh packaging/turbomod.bash-completion
+
+      - name: Run BATS unit test suite
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+          bats tests/turbomod.bats
+
+      - name: Validate user guide builder syntax
+        run: node --check docs/guide/build_guide.js

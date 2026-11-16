@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-11-15
+### Security & Hardening
+- **SonarQube Cloud & Jira Remediation (`TaliskerMan_turbomod`):** Remediated all 10 SonarQube Cloud findings across `docs/guide/build_guide.js` (`2 × jssecurity:S8707` Path Traversal), `install.sh` (`shell:S131` default case, `5 × shell:S7688` `[[ ... ]]`), and `release.sh` (`2 × shell:S7688` `[[ ... ]]`), plus hardened `turbomod` and `packaging/turbomod.bash-completion` (`0` `shellcheck` warnings).
+- **Isolated Non-Root Sysfs & State Testability:** Added environment-overridable `TURBOMOD_SYSFS_PATH`, `TURBOMOD_STATE_PATH`, and `TURBOMOD_EUID` hooks in `turbomod` and expanded `tests/turbomod.bats` to 18 tests covering `status` (ON/OFF/unknown), `enable`/`disable`, `--persist`, `restore`, and write-back rejection without requiring root or physical `intel_pstate` hardware.
+- **SonarQube Cloud & Supply Chain Hygiene:** Added `.sonarcloud.properties`, tracked `sonar-project.properties`, `.sonarlint/connectedMode.json`, `.snyk`, `.dcignore`, self-contained `docs/guide/logo.png`, `docs/guide/package.json` (`"type": "module"`), SHA-pinned `.github/workflows/ci.yml`, and updated CycloneDX SBOM and SHA-512 checksums in `Audit/`.
+
 ## [1.1.1] - 2026-10-16
 ### Fixed
 - **Licence:** `LICENSE` named AGPL-3.0 but didn't contain the licence text,

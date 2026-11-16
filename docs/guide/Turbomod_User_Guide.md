@@ -1,6 +1,6 @@
 title: Turbomod
 subtitle: Installation and User Guide
-version: 1.1.1
+version: 1.1.2
 platforms: Linux (Intel CPUs with intel_pstate)
 ## About Turbomod
 
